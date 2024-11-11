@@ -40,7 +40,7 @@ const Overlay: React.FC<OverlayProps> = ({
       className='fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 backdrop-blur-sm'
       onClick={handleBackgroundClick}
     >
-      <div className='w-full'>{children}</div>
+      {children}
     </div>
   );
 };

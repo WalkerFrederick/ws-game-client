@@ -95,7 +95,7 @@ export function ConnectToLobbyFormUi(props: ConnectToLobbyFormUiProps) {
           <div className='mt-8'>
             <button
               type='submit'
-              className='w-full shadow rounded-md bg-indigo-600 px-6 py-4 text-xl font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
+              className='w-full shadow rounded-md bg-neutral-900 px-6 py-4 text-xl font-semibold text-white hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
             >
               {formLoading ? <ButtonSpinner /> : 'Join or Create Lobby'}
             </button>

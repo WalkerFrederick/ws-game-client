@@ -1,7 +1,7 @@
 export function GameResultsUi(props: { winner: string }) {
   return (
     <>
-      <h1 className='text-4xl md:text-7xl'>Winner!</h1>
+      <h1 className='text-4xl md:text-7xl'>{props.winner && 'Winner!'}</h1>
 
       <div className='relative shadow bg-white rounded-md border-slate-900 border-4 my-4 mb-8'>
         <input
@@ -9,7 +9,7 @@ export function GameResultsUi(props: { winner: string }) {
           tabIndex={-1}
           value={props.winner}
           readOnly
-          placeholder='Waiting...'
+          placeholder='TIE'
           className='text-center font-bold text-xl text-bold block w-full rounded-md border-0 py-4 text-gray-900 placeholder:text-gray-400'
         />
       </div>

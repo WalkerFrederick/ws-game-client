@@ -15,7 +15,7 @@ export default function TailwindHero() {
             <div className='mt-10 flex items-center justify-center gap-x-6'>
               <a
                 href='/playgame'
-                className='shadow rounded-md bg-white px-6 py-4 text-xl font-semibold text-black hover:bg-neutral-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
+                className='shadow rounded-md bg-neutral-900 px-6 py-4 text-xl font-semibold text-white hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
               >
                 PLAY NOW
               </a>
