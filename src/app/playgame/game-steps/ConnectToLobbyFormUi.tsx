@@ -69,7 +69,7 @@ export function ConnectToLobbyFormUi(props: ConnectToLobbyFormUiProps) {
                   type='text'
                   defaultValue={props.defualtValues?.name ?? ''}
                   placeholder='Name (required)'
-                  className='shadow text-lg text-bold block w-full rounded-md border-0 py-4 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600'
+                  className='shadow text-lg text-bold block w-full rounded-md border-0 py-4 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-500'
                 />
               </div>
             </div>
@@ -87,7 +87,7 @@ export function ConnectToLobbyFormUi(props: ConnectToLobbyFormUiProps) {
                   type='text'
                   defaultValue={props.defualtValues?.lobby ?? ''}
                   placeholder='Lobby Code (required)'
-                  className='shadow text-lg text-bold block w-full rounded-md border-0 py-4 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600'
+                  className='shadow text-lg text-bold block w-full rounded-md border-0 py-4 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-green-500'
                 />
               </div>
             </div>
@@ -95,7 +95,7 @@ export function ConnectToLobbyFormUi(props: ConnectToLobbyFormUiProps) {
           <div className='mt-8'>
             <button
               type='submit'
-              className='w-full shadow rounded-md bg-indigo-600 px-6 py-4 text-xl font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
+              className='w-full shadow rounded-md bg-indigo-600 px-6 py-4 text-xl font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
             >
               {formLoading ? <ButtonSpinner /> : 'Join or Create Lobby'}
             </button>

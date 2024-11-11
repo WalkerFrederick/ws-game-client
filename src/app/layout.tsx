@@ -41,10 +41,10 @@ export default function RootLayout({
 }) {
   return (
     <html className='h-full'>
-      <body className='bg-slate-700 text-white h-full relative'>
+      <body className='bg-neutral-700 text-white h-full relative'>
         <TailwindHeader />
         {children}
-        <footer className=' flex justify-center py-2 bg-slate-800 absolute bottom-0 text-white border-t border-black w-full'>
+        <footer className='flex justify-center py-2 bg-neutral-800 absolute bottom-0 text-white border-white w-full'>
           © {new Date().getFullYear()}{' '}
           <UnderlineLink className='pl-1' href='#'>
             Allison F.

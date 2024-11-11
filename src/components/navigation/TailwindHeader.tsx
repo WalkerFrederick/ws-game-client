@@ -4,7 +4,7 @@ import RealmChampsLogo from '@/components/svg/RealmChampsLogo';
 
 export default function TailwindHeader() {
   return (
-    <header className='absolute z-40 w-full border-b bg-slate-800 border-black '>
+    <header className='absolute z-40 w-full bg-neutral-800 shadow-xl'>
       <nav
         aria-label='Global'
         className='mx-auto flex max-w-7xl items-center justify-center p-6 lg:px-8'

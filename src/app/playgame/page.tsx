@@ -88,10 +88,10 @@ export default function PlayGamePage() {
     socket.on('connect', () => {
       if (needConnectionBuffer) {
         setTimeout(() => {
-          setUiStep(uiSteps.CONNECT_TO_LOBBY_FORM);
+          setUiStep(uiSteps.GAME);
         }, 500);
       } else {
-        setUiStep(uiSteps.CONNECT_TO_LOBBY_FORM);
+        setUiStep(uiSteps.GAME);
       }
     });
 
@@ -247,14 +247,11 @@ export default function PlayGamePage() {
         />
       ),
       [uiSteps.GAME]: (
-        <button
-          onClick={() => {
-            sendConcede();
-          }}
-          className='shadow rounded-md bg-red-600 px-6 py-4 text-xl font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600'
-        >
-          SKIP and CONCENDE ({roundTimer}, {roundBufferTimer})
-        </button>
+        <GameUi
+          sendConcede={() => sendConcede()}
+          roundTimer={roundTimer}
+          roundBufferTimer={roundBufferTimer}
+        />
       ),
       [uiSteps.GAME_RESULTS]: (
         <GameResultsUi winner={gameState?.winner ?? ''} />
@@ -286,7 +283,9 @@ export default function PlayGamePage() {
                 <>
                   <div>
                     <h1>PAUSED</h1>
-                    <h3>{reconnectTimer}</h3>
+                    <h3 className='font-light my-4'>
+                      Opponent has {reconnectTimer} seconds to reconnect...
+                    </h3>
                   </div>
                 </>
               )}
@@ -305,6 +304,48 @@ export default function PlayGamePage() {
   );
 }
 
-export function GameUi() {
-  return <></>;
+interface GameUiProps {
+  sendConcede: () => void;
+  roundTimer: number;
+  roundBufferTimer: number;
+}
+
+export function GameUi(props: GameUiProps) {
+  return (
+    <div className='absolute top-0 bottom-0 left-0 right-0 flex justify-center items-center'>
+      <div className='absolute top-10 px-10 w-full h-24 flex justify-center items-center'>
+        <div className='h-full min-w-[15%] bg-white shadow rounded-md border-4 border-black'></div>
+        <div className='h-full min-w-[50%] bg-white shadow rounded-md border-4 border-black mx-4'></div>
+        <div className='h-full min-w-[15%] bg-white shadow rounded-md border-4 border-black'></div>
+      </div>
+      <button
+        onClick={() => {
+          props.sendConcede();
+        }}
+        className='shadow rounded-md bg-red-600 px-6 py-4 text-xl font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600'
+      >
+        SKIP and CONCENDE ({props.roundTimer ?? ''}, {props.roundBufferTimer})
+      </button>
+      <div className='absolute bottom-12 px-10 w-full h-48 flex justify-center items-center'>
+        <div className='min-w-[15%] h-24 bg-white shadow rounded-md border-4 border-black'></div>
+        <div className='h-full min-w-[50%] bg-white shadow rounded-md border-4 border-black mx-4'>
+          <div className='py-3 px-5 h-full w-full grid grid-cols-2 grid-rows-2 gap-2'>
+            <button className='shadow rounded-md bg-red-400 px-6 py-4 text-xl font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600'>
+              Abilities
+            </button>
+            <button className='shadow rounded-md bg-amber-300 px-6 py-4 text-xl font-semibold text-white hover:bg-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500'>
+              Items
+            </button>
+            <button className='shadow rounded-md bg-green-400 px-6 py-4 text-xl font-semibold text-white hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'>
+              Champions
+            </button>
+            <button className='shadow rounded-md bg-sky-600 px-6 py-4 text-xl font-semibold text-white hover:bg-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600'>
+              Settings
+            </button>
+          </div>
+        </div>
+        <div className='min-w-[15%] h-24 bg-white shadow rounded-md border-4 border-black'></div>
+      </div>
+    </div>
+  );
 }
