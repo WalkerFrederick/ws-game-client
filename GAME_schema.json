@@ -1,0 +1,31 @@
+{
+  "ActionsToPlayOut": {
+    "timeout": 20000,
+    "actions": [
+      {
+        "message": "player exmplUser's champion used Heavy Strike",
+        "playtime": 3000
+      },
+      {
+        "message": "they rolled a //d20=16 + //magic=3 = //total=19 for the attack roll",
+        "playtime": 3000
+      },
+      {
+        "message": "a //total=19 Hits player othrUser's champion",
+        "playtime": 3000
+      },
+      {
+        "message": "they deal //1d6=4 + //magic=3 = //total=7 damage",
+        "playtime": 3000
+      },
+      {
+        "message": "player othrUser's champion used Healing Words",
+        "playtime": 3000
+      },
+      {
+        "message": "they heal for //1d6=3",
+        "playtime": 3000
+      }
+    ]
+  }
+}

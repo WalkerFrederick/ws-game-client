@@ -8,6 +8,7 @@ import '@/lib/env';
 
 import { useNotification } from '@/hooks/useNotification';
 import { useOverlay } from '@/hooks/useOverlay';
+import useWindowSize from '@/hooks/useWindowSize';
 
 import Notification from '@/components/notification';
 import Overlay from '@/components/Overlay';
@@ -18,6 +19,7 @@ import { ConnectToLobbyFormUi } from '@/app/playgame/game-steps/ConnectToLobbyFo
 import { GameLobbyUi } from '@/app/playgame/game-steps/GameLobbyUi';
 import { GameResultsUi } from '@/app/playgame/game-steps/GameResults';
 import { GeneralErrorUi } from '@/app/playgame/game-steps/GeneralErrorUi';
+import { GameState, GameStatePlayerSnapshot, LatestRoundResult } from '@/app/playgame/types';
 let socket: any;
 
 enum uiSteps {
@@ -29,44 +31,7 @@ enum uiSteps {
   GENERAL_ERROR = 'GENERAL_ERROR',
 }
 
-interface Player {
-  id: string;
-  username: string;
-  choice: choice; // Player's choice in the current round
-  score: number; // Player's current score
-  isReady: boolean; // Status indicating if the player is ready to start
-  disconnected: boolean; // Indicates if player is currently disconnected
-  reconnectTimeout?: NodeJS.Timeout | null; // Timer for reconnection countdown
-}
-
 type choice = 'rock' | 'paper' | 'scissors' | null;
-
-type LatestResultType = {
-  player1?: {
-    id: string;
-    choice: choice;
-    score: number;
-    isLocalPlayer?: boolean;
-    wonRound: boolean;
-  };
-  player2?: {
-    id: string;
-    choice: choice;
-    score: number;
-    isLocalPlayer?: boolean;
-    wonRound: boolean;
-  };
-};
-
-interface Game {
-  players: Player[]; // List of players in the game
-  round: number; // Current round number
-  timer: NodeJS.Timeout | null; // Timer for round timeouts
-  isStarted: boolean; // Indicates if the game has started
-  isPaused: boolean; // Indicates if the game is paused (e.g., due to disconnection)
-  name: string;
-  winner?: string;
-}
 
 export default function PlayGamePage() {
   //see if url has lobby and or name
@@ -82,7 +47,7 @@ export default function PlayGamePage() {
   const [generalError, setGeneralError] = useState<string>(
     'Something Went Wrong!'
   );
-  const [gameState, setGameState] = useState<Game | undefined>();
+  const [gameState, setGameState] = useState<GameState | undefined>();
 
   const [matchStartTimer, setMatchStartTimer] = useState<number>(0);
   const [roundTimer, setRoundTimer] = useState<number>(0);
@@ -91,7 +56,10 @@ export default function PlayGamePage() {
 
   const [localPlayerUsername, setLocalPlayerUsername] = useState<string>('');
   const [choiceLocked, setChoiceLocked] = useState<boolean>(false);
-  const [latestResult, setLatestResult] = useState<LatestResultType | null>();
+  const [latestResult, setLatestResult] = useState<LatestRoundResult | null>();
+  const [showResults, setShowResults] = useState<boolean>(false);
+
+  const { width, height } = useWindowSize();
 
   useEffect(() => {
     //connection buffer to add slight delay to connection message.
@@ -101,7 +69,7 @@ export default function PlayGamePage() {
     }, 500);
 
     // Initialize socket connection
-    socket = io('192.168.50.202:8080', {
+    socket = io('localhost:8080', {
       timeout: 3000,
       reconnection: true,
       reconnectionAttempts: 2, // Maximum number of reconnection attempts
@@ -127,14 +95,14 @@ export default function PlayGamePage() {
       showNotification(msg.message, msg.type);
     });
 
-    socket.on('server:waiting-for-players', (game: Game) => {
+    socket.on('server:waiting-for-players', (game: GameState) => {
       console.log('server:waiting-for-players', game);
       hideOverlay();
       setGameState(game);
       setUiStep(uiSteps.GAME_LOBBY);
     });
 
-    socket.on('server:player-reconnected', (game: Game) => {
+    socket.on('server:player-reconnected', (game: GameState) => {
       console.log('server:player-reconnected', game);
       hideOverlay();
       setGameState(game);
@@ -143,12 +111,12 @@ export default function PlayGamePage() {
       }
     });
 
-    socket.on('server:waiting-for-ready', (game: Game) => {
+    socket.on('server:waiting-for-ready', (game: GameState) => {
       setGameState(game);
       console.log('server:waiting-for-ready', game);
     });
 
-    socket.on('server:player-ready-status', (game: Game) => {
+    socket.on('server:player-ready-status', (game: GameState) => {
       console.log('server:player-ready-status', game);
       setGameState(game);
     });
@@ -162,6 +130,7 @@ export default function PlayGamePage() {
     socket.on('server:start-round', (msg: any) => {
       console.log('server:start-round', msg);
       setChoiceLocked(false);
+      setShowResults(false)
     });
 
     socket.on('server:round-countdown', (msg: any) => {
@@ -169,13 +138,9 @@ export default function PlayGamePage() {
       setRoundTimer(msg.countdown);
     });
 
-    socket.on('server:round-result', (msg: LatestResultType) => {
+    socket.on('server:round-result', (msg: LatestRoundResult) => {
       console.log('server:round-result', msg);
-      if (msg.player1 && msg.player2) {
-        if (msg.player1?.id === socket.id) msg.player1.isLocalPlayer = true;
-        if (msg.player2?.id === socket.id) msg.player2.isLocalPlayer = true;
-        setLatestResult(msg);
-      }
+      setLatestResult(msg);
     });
 
     socket.on('server:round-end-timer', (msg: any) => {
@@ -183,7 +148,7 @@ export default function PlayGamePage() {
       setRoundBufferTimer(msg.countdown);
     });
 
-    socket.on('server:game-over', (game: Game) => {
+    socket.on('server:game-over', (game: GameState) => {
       console.log('server:game-over', game);
       setGameState(game);
       hideOverlay();
@@ -196,7 +161,7 @@ export default function PlayGamePage() {
       showOverlay();
     });
 
-    socket.on('server:player-disconnected', (game: Game) => {
+    socket.on('server:player-disconnected', (game: GameState) => {
       console.log('server:player-disconnected', game);
       setGameState(game);
     });
@@ -234,15 +199,19 @@ export default function PlayGamePage() {
   };
 
   const sendReady = () => {
+    if (gameState?.isStarted) {
+      setGameState(latestResult?.finalGameState)
+      setShowResults(false)
+    }
     const data = {
-      gameId: gameState?.name,
+      gameId: gameState?.lobbyCode,
     };
     socket.emit('client:player-ready', data);
   };
 
   const sendConcede = () => {
     const data = {
-      gameId: gameState?.name,
+      gameId: gameState?.lobbyCode,
     };
     socket.emit('client:concede', data);
   };
@@ -250,11 +219,24 @@ export default function PlayGamePage() {
   const sendChoice = (choice: choice) => {
     setChoiceLocked(true);
     const data = {
-      gameId: gameState?.name,
+      gameId: gameState?.lobbyCode,
       choice: choice,
     };
     socket.emit('client:make-choice', data);
   };
+
+  const updateGameState = (gameStateSnapshot: GameStatePlayerSnapshot) => {
+    //todo-merge a player snapshot with full gamestate
+    const nextGameState = gameState
+    if (nextGameState) nextGameState.players = gameStateSnapshot.players
+    setGameState(nextGameState)
+  };
+
+  useEffect(() => {
+    if (latestResult) {
+      setShowResults(true);
+    }
+  }, [latestResult]);
 
   const uiStepComponents = (step: uiSteps) => {
     const componentMap = {
@@ -273,13 +255,13 @@ export default function PlayGamePage() {
           localPlayer={localPlayerUsername}
           Player1={{
             name: gameState?.players[0]?.username ?? '',
-            ready: gameState?.players[0]?.isReady ?? false,
+            ready: gameState?.players[0]?.matchReady ?? false,
           }}
           Player2={{
             name: gameState?.players[1]?.username ?? '',
-            ready: gameState?.players[1]?.isReady ?? false,
+            ready: gameState?.players[1]?.matchReady ?? false,
           }}
-          LobbyCode={gameState?.name ?? ''}
+          LobbyCode={gameState?.lobbyCode ?? ''}
           onReady={() => sendReady()}
         />
       ),
@@ -293,11 +275,13 @@ export default function PlayGamePage() {
           roundBufferTimer={roundBufferTimer}
           choiceLocked={choiceLocked}
           latestResult={latestResult ?? null}
+          showResult={showResults}
           localPlayerUsername={localPlayerUsername}
+          updateGameState={(gameState: GameStatePlayerSnapshot) => updateGameState(gameState)}
         />
       ),
       [uiSteps.GAME_RESULTS]: (
-        <GameResultsUi winner={gameState?.winner ?? ''} />
+        <GameResultsUi winner={gameState?.winner ?? undefined} />
       ),
       [uiSteps.GENERAL_ERROR]: <GeneralErrorUi message={generalError} />,
     };
@@ -340,6 +324,14 @@ export default function PlayGamePage() {
                 </>
               )}
             </Overlay>
+            <Overlay isVisible={width < 640 || height < 700} onClose={() => { }}>
+              <div className='flex-col'>
+                <h3 className='mb-8'>SCREEN SIZE TOO SMALL</h3>
+                <a href='/' className='w-full shadow rounded-md bg-white px-6 py-4 text-xl font-semibold text-black hover:bg-neutral-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'>
+                  Home
+                </a>
+              </div>
+            </Overlay>
           </div>
         </div>
       </section>
@@ -353,8 +345,10 @@ interface GameUiProps {
   roundTimer: number;
   roundBufferTimer: number;
   choiceLocked: boolean;
-  latestResult: LatestResultType | null;
+  latestResult: LatestRoundResult | null;
+  showResult: boolean;
   localPlayerUsername: string;
+  updateGameState: (gameState: GameStatePlayerSnapshot) => void;
 }
 
 export function GameUi(props: GameUiProps) {
@@ -368,17 +362,8 @@ export function GameUi(props: GameUiProps) {
     useState<boolean>(false);
 
   const [choice, setChoice] = useState<choice>(null);
-  const [showResults, setShowResults] = useState<boolean>(false);
 
-  useEffect(() => {
-    console.log('latest result updated!', props.latestResult);
-    if (props.latestResult) {
-      setShowResults(true);
-      setTimeout(() => {
-        setShowResults(false);
-      }, 4000);
-    }
-  }, [props.latestResult]);
+
 
   const closeAllOverlay = () => {
     setAbilitiesOverlayVisible(false);
@@ -522,132 +507,177 @@ export function GameUi(props: GameUiProps) {
         <div className='hidden h-full min-w-[15%] bg-white shadow rounded-md border-4 border-black'></div>
       </div>
       <div>
-        {!showResults && !props.choiceLocked && (
+        {!props.showResult && !props.choiceLocked && (
           <>
             <h3 className='mb-4'>CHOOSE YOUR CARD</h3>
           </>
         )}
-        {!showResults && props.choiceLocked && (
+        {!props.showResult && props.choiceLocked && (
           <>
             <h3 className='mb-4'>WAITING FOR OPPONENT...</h3>
           </>
         )}
-        {props.latestResult && showResults && (
+        {props.latestResult && props.showResult && (
           <>
             <div className='flex justify-center gap-4'>
-              <div className='relative flex flex-col justify-center items-center'>
-                {props.latestResult?.player1?.wonRound && (
-                  <>
-                    <div className='absolute z-10 top-10 -left-3 bg-amber-500 rounded-full h-8 w-8 p-2'>
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        viewBox='0 0 128 122'
-                        fill='none'
-                      >
-                        <path
-                          d='M64 0L79.0424 46.2959H127.721L88.3392 74.9083L103.382 121.204L64 92.5917L24.6184 121.204L39.6608 74.9083L0.279213 46.2959H48.9576L64 0Z'
-                          fill='white'
-                        />
-                      </svg>
-                    </div>
-                  </>
-                )}
-                <h3 className='mb-4'>
-                  {props.latestResult?.player1?.isLocalPlayer
-                    ? 'YOU'
-                    : 'OPPONENT'}
-                  ({props.latestResult?.player1?.score})
-                </h3>
-                <button
-                  disabled
-                  tabIndex={-1}
-                  className='relative h-48 w-36 bg-white text-black rounded ocus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 border-4'
-                >
-                  {props.latestResult?.player1?.choice}
-                </button>
-              </div>
-              <div className='relative flex flex-col justify-center items-center'>
-                {props.latestResult?.player2?.wonRound && (
-                  <>
-                    <div className='absolute z-10 top-10 -left-3 bg-amber-500 rounded-full h-8 w-8 p-2'>
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        viewBox='0 0 128 122'
-                        fill='none'
-                      >
-                        <path
-                          d='M64 0L79.0424 46.2959H127.721L88.3392 74.9083L103.382 121.204L64 92.5917L24.6184 121.204L39.6608 74.9083L0.279213 46.2959H48.9576L64 0Z'
-                          fill='white'
-                        />
-                      </svg>
-                    </div>
-                  </>
-                )}
-                <h3 className='mb-4'>
-                  {props.latestResult?.player2?.isLocalPlayer
-                    ? 'YOU'
-                    : 'OPPONENT'}
-                  ({props.latestResult?.player2?.score})
-                </h3>
-                <button
-                  disabled
-                  tabIndex={-1}
-                  className='relative h-48 w-36 bg-white text-black rounded ocus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 border-4'
-                >
-                  {props.latestResult?.player2?.choice}
-                </button>
-              </div>
+
             </div>
           </>
         )}
       </div>
       <div className='absolute bottom-12 px-10 w-full h-48 flex justify-center items-center'>
-        <div className='hidden min-w-[15%] h-24 bg-white shadow rounded-md border-4 border-black'></div>
-        <div className='relative h-full min-w-[50%] bg-white shadow rounded-md border-4 border-black mx-4'>
+        <div className='relative h-full w-full bg-white shadow rounded-md border-4 border-black mx-4'>
           <div className='absolute top-[-20%] right-[50%] translate-x-[50%] rounded-full bg-white border-black border-4 w-16 h-16 flex justify-center items-center'>
             <h1 className='text-2xl text-black font-black'>
-              {showResults ? '' : props.roundTimer}
+              {props.showResult ? '' : props.roundTimer}
             </h1>
           </div>
-          <div className='py-3 px-5 h-full w-full grid grid-cols-2 grid-rows-2 gap-2'>
-            <button
-              onClick={() => {
-                setAbilitiesOverlayVisible(true);
-              }}
-              className='shadow rounded-md bg-red-400 px-6 py-4 text-xl font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600'
-            >
-              Abilities
-            </button>
-            <button
-              disabled
-              onClick={() => {
-                setItemsOverlayVisible(true);
-              }}
-              className='shadow rounded-md bg-amber-300 px-6 py-4 text-xl font-semibold text-white hover:bg-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500'
-            >
-              Coming Soon
-            </button>
-            <button
-              disabled
-              onClick={() => {
-                setChampionsOverlayVisible(true);
-              }}
-              className='shadow rounded-md bg-green-400 px-6 py-4 text-xl font-semibold text-white hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
-            >
-              Coming Soon
-            </button>
-            <button
-              onClick={() => {
-                setSettingsOverlayVisible(true);
-              }}
-              className='shadow rounded-md bg-sky-600 px-6 py-4 text-xl font-semibold text-white hover:bg-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600'
-            >
-              Settings
-            </button>
-          </div>
+
+          {!(props.latestResult && props.showResult) ? <>
+            <div className='py-3 px-5 h-full w-full grid grid-cols-2 grid-rows-2 gap-2'>
+              <button
+                onClick={() => {
+                  setAbilitiesOverlayVisible(true);
+                }}
+                className='shadow rounded-md bg-red-400 px-6 py-4 text-xl font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600'
+              >
+                Abilities
+              </button>
+              <button
+                onClick={() => {
+                  setItemsOverlayVisible(true);
+                }}
+                className='shadow rounded-md bg-amber-300 px-6 py-4 text-xl font-semibold text-white hover:bg-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500'
+              >
+                Items (3/3)
+              </button>
+              <button
+                onClick={() => {
+                  setChampionsOverlayVisible(true);
+                }}
+                className='shadow rounded-md bg-green-400 px-6 py-4 text-xl font-semibold text-white hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
+              >
+                Champions (3/3)
+              </button>
+              <button
+                onClick={() => {
+                  setSettingsOverlayVisible(true);
+                }}
+                className='shadow rounded-md bg-sky-600 px-6 py-4 text-xl font-semibold text-white hover:bg-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600'
+              >
+                Settings
+              </button>
+            </div>
+
+          </> : <>
+            <div className='text-black text-left h-full w-full leading-loose'>
+              <ActionPlayer data={props.latestResult} handleNext={(gameState: GameStatePlayerSnapshot) => props.updateGameState(gameState)} />
+              <a className='absolute bottom-2 right-4 text-gray-600'>
+                <h4>NEXT [ENTER]</h4>
+              </a>
+            </div>
+          </>}
+
         </div>
-        <div className='hidden min-w-[15%] h-24 bg-white shadow rounded-md border-4 border-black'></div>
       </div>
     </div>
   );
 }
+
+const formatActionText = (text: string) => {
+  // Capitalize the entire input string
+  const formatted = text.toUpperCase();
+
+  // Regex to match the patterns //d20=X, //magic=X, and //total=X, capturing the number after "="
+  const rollPattern = /\/\/(D20|MAGIC|TOTAL)=(\d+)/g;
+
+  // Array to store the result
+  const result: (string | JSX.Element)[] = [];
+
+  // Using `replace` with a function to process each match and surrounding text
+  let lastIndex = 0;
+  formatted.replace(rollPattern, (match, type, value, offset) => {
+    // Add the text before the match as a string
+    if (offset > lastIndex) {
+      result.push(formatted.slice(lastIndex, offset));
+    }
+
+    // Add an empty inline div as the replacement for the match, with the number captured in `value`
+    result.push(
+      <div key={offset} className='inline border px-1 py-0.5 rounded ' data-type={type} data-value={value}>
+        {type === 'D20' && (<div className='inline bg-red-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>D20</div>)}
+        {type === 'D6' && (<div className='inline bg-sky-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>D6</div>)}
+        {type === 'MAGIC' && (<div className='inline bg-purple-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>MAGIC</div>)}
+        {type === 'STRENGTH' && (<div className='inline bg-blue-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>STRENGTH</div>)}
+        {type === 'SPEED' && (<div className='inline bg-green-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>SPEED</div>)}
+        {type === 'TOTAL' && (<div className='inline bg-amber-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>TOTAL</div>)}
+        <h6 className='inline align-middle'>{value}</h6>
+      </div>
+    );
+
+    // Update the last index to the end of the current match
+    lastIndex = offset + match.length;
+
+    return ""; // Return empty string for replacement (not used in result directly)
+  });
+
+  // Add any remaining text after the last match
+  if (lastIndex < formatted.length) {
+    result.push(formatted.slice(lastIndex));
+  }
+
+  return result;
+}
+
+const ActionPlayer = (props: { data: LatestRoundResult, handleNext: (gameState: GameStatePlayerSnapshot) => void }) => {
+  const actions = props.data.actionsToPlayOut;
+  const [currentActionIndex, setCurrentActionIndex] = useState(0);
+
+  const nextAction = React.useCallback(() => {
+    setCurrentActionIndex((prevIndex) => {
+      if (prevIndex < actions.length - 1) {
+        return prevIndex + 1;
+      }
+      return prevIndex; // Stay on the last action if no more actions are available
+    });
+  }, [actions.length]);
+
+  // Set up a timer to move to the next action automatically after playtime
+  useEffect(() => {
+    if (currentActionIndex < actions.length - 1) {
+      const timer = setTimeout(() => {
+        props.handleNext(actions[currentActionIndex].gameStateSnapshot);
+        nextAction();
+      }, actions[currentActionIndex].playtime);
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentActionIndex, actions, nextAction]);
+
+  // Set up event listener for Enter key press to skip
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        nextAction();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [nextAction]);
+
+  const formattedMessage = formatActionText(actions[currentActionIndex].description);
+
+  return (
+    <div
+      tabIndex={0}
+      key={formattedMessage.toString() ?? ''}
+      className='h-full w-full cursor-pointer p-6 pt-12 font-bold select-none animate-fadeUp'
+      onClick={nextAction}
+    >
+      {formattedMessage}
+    </div>
+  );
+};

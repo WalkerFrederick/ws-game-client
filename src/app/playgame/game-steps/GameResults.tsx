@@ -1,4 +1,6 @@
-export function GameResultsUi(props: { winner: string }) {
+import { Player } from "@/app/playgame/types";
+
+export function GameResultsUi(props: { winner?: Player }) {
   return (
     <>
       <h1 className='text-4xl md:text-7xl'>{props.winner && 'Winner!'}</h1>
@@ -7,7 +9,7 @@ export function GameResultsUi(props: { winner: string }) {
         <input
           disabled={true}
           tabIndex={-1}
-          value={props.winner}
+          value={props?.winner?.username ?? ''}
           readOnly
           placeholder='TIE'
           className='text-center font-bold text-xl text-bold block w-full rounded-md border-0 py-4 text-gray-900 placeholder:text-gray-400'
