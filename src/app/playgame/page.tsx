@@ -201,7 +201,6 @@ export default function PlayGamePage() {
   const sendReady = () => {
     if (gameState?.isStarted) {
       setGameState(latestResult?.finalGameState)
-      setShowResults(false)
     }
     const data = {
       gameId: gameState?.lobbyCode,
@@ -271,6 +270,7 @@ export default function PlayGamePage() {
           sendChoice={(choice) => {
             sendChoice(choice);
           }}
+          sendReady={() => sendReady()}
           roundTimer={roundTimer}
           roundBufferTimer={roundBufferTimer}
           choiceLocked={choiceLocked}
@@ -278,6 +278,7 @@ export default function PlayGamePage() {
           showResult={showResults}
           localPlayerUsername={localPlayerUsername}
           updateGameState={(gameState: GameStatePlayerSnapshot) => updateGameState(gameState)}
+          gamePaused={!!gameState?.isPaused}
         />
       ),
       [uiSteps.GAME_RESULTS]: (
@@ -342,6 +343,7 @@ export default function PlayGamePage() {
 interface GameUiProps {
   sendConcede: () => void;
   sendChoice: (arg: choice) => void;
+  sendReady: () => void;
   roundTimer: number;
   roundBufferTimer: number;
   choiceLocked: boolean;
@@ -349,6 +351,7 @@ interface GameUiProps {
   showResult: boolean;
   localPlayerUsername: string;
   updateGameState: (gameState: GameStatePlayerSnapshot) => void;
+  gamePaused: boolean;
 }
 
 export function GameUi(props: GameUiProps) {
@@ -571,7 +574,7 @@ export function GameUi(props: GameUiProps) {
 
           </> : <>
             <div className='text-black text-left h-full w-full leading-loose'>
-              <ActionPlayer data={props.latestResult} handleNext={(gameState: GameStatePlayerSnapshot) => props.updateGameState(gameState)} />
+              <ActionPlayer paused={props.gamePaused} data={props.latestResult} handleNext={(gameState: GameStatePlayerSnapshot) => props.updateGameState(gameState)} sendReady={props.sendReady} />
               <a className='absolute bottom-2 right-4 text-gray-600'>
                 <h4>NEXT [ENTER]</h4>
               </a>
@@ -588,8 +591,8 @@ const formatActionText = (text: string) => {
   // Capitalize the entire input string
   const formatted = text.toUpperCase();
 
-  // Regex to match the patterns //d20=X, //magic=X, and //total=X, capturing the number after "="
-  const rollPattern = /\/\/(D20|MAGIC|TOTAL)=(\d+)/g;
+  // Regex to match patterns like //3d20=X, //1d6=X, //magic=X, capturing the type and value after "="
+  const rollPattern = /\/\/(\d*D\d+|MAGIC|STRENGTH|SPEED|TOTAL)=(\d+)/g;
 
   // Array to store the result
   const result: (string | JSX.Element)[] = [];
@@ -602,15 +605,26 @@ const formatActionText = (text: string) => {
       result.push(formatted.slice(lastIndex, offset));
     }
 
+    // Determine color based on type
+    let colorClass = '';
+    if (type.includes('D20')) {
+      colorClass = 'bg-red-800';
+    } else if (type.includes('D6')) {
+      colorClass = 'bg-sky-800';
+    } else if (type === 'MAGIC') {
+      colorClass = 'bg-purple-800';
+    } else if (type === 'STRENGTH') {
+      colorClass = 'bg-blue-800';
+    } else if (type === 'SPEED') {
+      colorClass = 'bg-green-800';
+    } else if (type === 'TOTAL') {
+      colorClass = 'bg-amber-800';
+    }
+
     // Add an empty inline div as the replacement for the match, with the number captured in `value`
     result.push(
       <div key={offset} className='inline border px-1 py-0.5 rounded ' data-type={type} data-value={value}>
-        {type === 'D20' && (<div className='inline bg-red-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>D20</div>)}
-        {type === 'D6' && (<div className='inline bg-sky-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>D6</div>)}
-        {type === 'MAGIC' && (<div className='inline bg-purple-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>MAGIC</div>)}
-        {type === 'STRENGTH' && (<div className='inline bg-blue-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>STRENGTH</div>)}
-        {type === 'SPEED' && (<div className='inline bg-green-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>SPEED</div>)}
-        {type === 'TOTAL' && (<div className='inline bg-amber-800 text-white text-sm px-0.5 rounded mr-1 align-middle'>TOTAL</div>)}
+        <div className={`inline ${colorClass} text-white text-sm px-0.5 rounded mr-1 align-middle`}>{type}</div>
         <h6 className='inline align-middle'>{value}</h6>
       </div>
     );
@@ -627,9 +641,16 @@ const formatActionText = (text: string) => {
   }
 
   return result;
-}
+};
 
-const ActionPlayer = (props: { data: LatestRoundResult, handleNext: (gameState: GameStatePlayerSnapshot) => void }) => {
+
+interface ActionPlayerProps {
+  data: LatestRoundResult;
+  handleNext: (gameState: GameStatePlayerSnapshot) => void;
+  sendReady: () => void;
+  paused: boolean
+}
+const ActionPlayer = (props: ActionPlayerProps) => {
   const actions = props.data.actionsToPlayOut;
   const [currentActionIndex, setCurrentActionIndex] = useState(0);
 
@@ -638,21 +659,28 @@ const ActionPlayer = (props: { data: LatestRoundResult, handleNext: (gameState: 
       if (prevIndex < actions.length - 1) {
         return prevIndex + 1;
       }
+      props.sendReady()
       return prevIndex; // Stay on the last action if no more actions are available
     });
   }, [actions.length]);
 
-  // Set up a timer to move to the next action automatically after playtime
+  // Set up a timer to move to the next action automatically after playtime if not paused
   useEffect(() => {
-    if (currentActionIndex < actions.length - 1) {
-      const timer = setTimeout(() => {
+    let timer: NodeJS.Timeout | undefined;
+
+    if (!props.paused && currentActionIndex < actions.length - 1) {
+      timer = setTimeout(() => {
         props.handleNext(actions[currentActionIndex].gameStateSnapshot);
         nextAction();
       }, actions[currentActionIndex].playtime);
-
-      return () => clearTimeout(timer);
     }
-  }, [currentActionIndex, actions, nextAction]);
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [currentActionIndex, actions, nextAction, props.paused]);
 
   // Set up event listener for Enter key press to skip
   useEffect(() => {
