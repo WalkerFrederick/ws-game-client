@@ -40,8 +40,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html className='h-full'>
-      <body className='bg-neutral-700 text-white h-full relative'>
+    <html className='h-full w-full'>
+      <body className='bg-neutral-700 text-white h-full w-full absolute'>
+        <div style={{ backgroundImage: `url(${siteConfig.url}/images/logo-checkerboard.png)` }} className='absolute w-full h-full opacity-5 animate-bgScroll'>
+
+        </div>
         <TailwindHeader />
         {children}
         <footer className='flex justify-center py-2 bg-neutral-800 absolute bottom-0 text-white border-white w-full'>

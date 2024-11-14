@@ -53,11 +53,20 @@ export default {
             opacity: '1',
           },
         },
+        bgScroll: {
+          'from': {
+            backgroundPosition: '0 0',
+          },
+          'to': {
+            backgroundPosition: '500000px 500000px',
+          },
+        },
       },
       animation: {
         flicker: 'flicker 3s linear infinite',
         shimmer: 'shimmer 1.3s linear infinite',
         fadeUp: 'fadeUp .2s linear forwards',
+        bgScroll: 'bgScroll 40000s linear forwards',
       },
     },
   },
