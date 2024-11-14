@@ -19,7 +19,8 @@ import { ConnectToLobbyFormUi } from '@/app/playgame/game-steps/ConnectToLobbyFo
 import { GameLobbyUi } from '@/app/playgame/game-steps/GameLobbyUi';
 import { GameResultsUi } from '@/app/playgame/game-steps/GameResults';
 import { GeneralErrorUi } from '@/app/playgame/game-steps/GeneralErrorUi';
-import { GameState, GameStatePlayerSnapshot, LatestRoundResult } from '@/app/playgame/types';
+import { AbilityCardsEnum, ChampionCard as ChampionCardType, ChampionCardsEnum, GameState, GameStatePlayerSnapshot, ItemCardsEnum, LatestRoundResult, Player } from '@/app/playgame/types';
+import { siteConfig } from '@/constant/config';
 let socket: any;
 
 enum uiSteps {
@@ -266,6 +267,7 @@ export default function PlayGamePage() {
       ),
       [uiSteps.GAME]: (
         <GameUi
+          gameState={gameState}
           sendConcede={() => sendConcede()}
           sendChoice={(choice) => {
             sendChoice(choice);
@@ -352,6 +354,7 @@ interface GameUiProps {
   localPlayerUsername: string;
   updateGameState: (gameState: GameStatePlayerSnapshot) => void;
   gamePaused: boolean;
+  gameState: GameState | undefined;
 }
 
 export function GameUi(props: GameUiProps) {
@@ -364,7 +367,24 @@ export function GameUi(props: GameUiProps) {
   const [settingsOverlayVisible, setSettingsOverlayVisible] =
     useState<boolean>(false);
 
+  const [localPlayer, setLocalPlayer] =
+    useState<Player | undefined>();
+
+  const [otherPlayer, setOtherPlayer] =
+    useState<Player | undefined>();
+
+
   const [choice, setChoice] = useState<choice>(null);
+
+  useEffect(() => {
+    if (props.gameState?.players[0].username === props.localPlayerUsername) {
+      setLocalPlayer(props.gameState.players[0])
+      setOtherPlayer(props.gameState.players[1])
+    } else if (props.gameState?.players[1].username === props.localPlayerUsername) {
+      setLocalPlayer(props.gameState.players[1])
+      setOtherPlayer(props.gameState.players[0])
+    }
+  }, [props.gameState, props.localPlayerUsername])
 
 
 
@@ -388,33 +408,16 @@ export function GameUi(props: GameUiProps) {
       >
         <div className='flex-col justify-center'>
           <div className=' border-white flex gap-3'>
-            <button
-              onClick={() => {
-                setChoice('rock');
-              }}
-              className={`relative h-48 w-36 bg-white text-black hover:bg-neutral-200 hover:bottom-1 rounded ocus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 border-4 ${choice === 'rock' && ' border-sky-700'
-                }`}
-            >
-              ROCK
-            </button>
-            <button
-              onClick={() => {
-                setChoice('paper');
-              }}
-              className={`relative h-48 w-36 bg-white text-black hover:bg-neutral-200 hover:bottom-1 rounded ocus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 border-4 ${choice === 'paper' && ' border-sky-700'
-                }`}
-            >
-              PAPER
-            </button>
-            <button
-              onClick={() => {
-                setChoice('scissors');
-              }}
-              className={`relative h-48 w-36 bg-white text-black hover:bg-neutral-200 hover:bottom-1 rounded ocus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 border-4 ${choice === 'scissors' && ' border-sky-700'
-                }`}
-            >
-              SCISSORS
-            </button>
+            {localPlayer && <>
+              {localPlayer.cards?.activeChampion.abilityCards.map((ability) => (
+                <button
+                  className={`relative h-48 w-36 bg-white text-black hover:bg-neutral-200 hover:bottom-1 rounded ocus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 border-4 `}
+                >
+                  {ability.cardName}
+                  {ability.description}
+                </button>
+              ))}
+            </>}
           </div>
           <button
             disabled={props.choiceLocked || choice === null}
@@ -444,8 +447,34 @@ export function GameUi(props: GameUiProps) {
         isVisible={itemsOverlayVisible}
         onClose={() => closeAllOverlay()}
       >
-        <h1>ITEMS COMING SOON</h1>
-      </Overlay>
+        <div className='flex-col justify-center items-center'>
+          <div className=' border-white flex justify-center gap-3 w-full'>
+            {localPlayer && <>
+              {localPlayer.cards?.itemCards.map((itemCard) => (
+                <button
+                  className={'relative h-48 w-36 bg-white text-black hover:bg-neutral-200 hover:bottom-1 rounded ocus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500 border-4 break-words'}
+                >
+                  {itemCard.cardName}
+                  {itemCard.description}
+                </button>
+              ))}
+            </>}
+          </div>
+          <button
+            disabled={props.choiceLocked || choice === null}
+            className='w-full shadow rounded-md bg-sky-600 disabled:bg-neutral-500 px-6 py-4 mb-4 mt-4 text-xl font-semibold text-white hover:bg-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
+          >
+            Play Selected Card
+          </button>
+          <button
+            onClick={() => {
+              closeAllOverlay();
+            }}
+            className='w-full shadow rounded-md bg-red-600 px-6 py-4 mb-4 text-xl font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
+          >
+            Close Menu [ESC]
+          </button>
+        </div>      </Overlay>
     );
   };
 
@@ -455,7 +484,26 @@ export function GameUi(props: GameUiProps) {
         isVisible={championsOverlayVisible}
         onClose={() => closeAllOverlay()}
       >
-        <h1>CHAMPS COMING SOON</h1>
+
+        <div className='flex-col justify-center'>
+          <div className=' border-white flex gap-3'>
+            {localPlayer && <>
+              {localPlayer.cards?.activeChampion && <ChampionCard championCardData={localPlayer.cards?.activeChampion} infoWindowPos='cover' />
+              }
+              {localPlayer.cards?.championCards.map((champion) => (
+                <ChampionCard championCardData={champion} infoWindowPos='cover' />
+              ))}
+            </>}
+          </div>
+          <button
+            onClick={() => {
+              closeAllOverlay();
+            }}
+            className='mt-4 w-full shadow rounded-md bg-red-600 px-6 py-4 mb-4 text-xl font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-500'
+          >
+            Close Menu [ESC]
+          </button>
+        </div>
       </Overlay>
     );
   };
@@ -509,24 +557,15 @@ export function GameUi(props: GameUiProps) {
         <div className='h-full min-w-[50%] bg-white shadow rounded-md border-4 border-black mx-4'></div>
         <div className='hidden h-full min-w-[15%] bg-white shadow rounded-md border-4 border-black'></div>
       </div>
-      <div>
-        {!props.showResult && !props.choiceLocked && (
-          <>
-            <h3 className='mb-4'>CHOOSE YOUR CARD</h3>
-          </>
-        )}
-        {!props.showResult && props.choiceLocked && (
-          <>
-            <h3 className='mb-4'>WAITING FOR OPPONENT...</h3>
-          </>
-        )}
-        {props.latestResult && props.showResult && (
-          <>
-            <div className='flex justify-center gap-4'>
-
-            </div>
-          </>
-        )}
+      <div className='h-full w-full pt-36 pb-72'>
+        <div className='h-full w-full flex flex-col justify-between items-center'>
+          {otherPlayer?.cards?.activeChampion && <>
+            <ChampionCard championCardData={otherPlayer?.cards?.activeChampion} infoWindowPos='left' />
+          </>}
+          {localPlayer?.cards?.activeChampion && <>
+            <ChampionCard championCardData={localPlayer?.cards?.activeChampion} infoWindowPos='left' />
+          </>}
+        </div>
       </div>
       <div className='absolute bottom-12 px-10 w-full h-48 flex justify-center items-center'>
         <div className='relative h-full w-full bg-white shadow rounded-md border-4 border-black mx-4'>
@@ -709,3 +748,45 @@ const ActionPlayer = (props: ActionPlayerProps) => {
     </div>
   );
 };
+
+interface championCardProps {
+  infoWindowPos: 'left' | 'right' | 'cover';
+  championCardData: ChampionCardType;
+}
+
+const ChampionCard = (props: championCardProps) => {
+  return (
+    <div className='h-40 w-28 bg-black shadow-xl rounded-lg relative select-none'>
+      <div className={`absolute h-full w-full p-1 bg-black bg-opacity-40 top-0 rounded-lg ${props.infoWindowPos === 'right' && '-right-[110%]'} ${props.infoWindowPos === 'left' && '-left-[110%]'}`}>
+        <div className='w-full flex justify-center items-center'>
+          <div className='font-bold'>{props.championCardData.cardName}</div>
+        </div>
+        <div className='w-full flex justify-between items-center'>
+          <div className='px-0.5 text-xs text-white bg-red-700 rounded'>HEALTH</div>
+          <div className='font-bold'>{props.championCardData.health}</div>
+        </div>
+        <div className='w-full flex justify-between items-center'>
+          <div className='px-0.5 text-xs text-white bg-slate-600 rounded'>DEFENSE</div>
+          <div className='font-bold'>{props.championCardData.defense}</div>
+        </div>
+        <div className='w-full flex justify-between items-center'>
+          <div className='px-0.5 text-xs text-white bg-sky-800 rounded'>STRENGTH</div>
+          <div className='font-bold'>{props.championCardData.strength}</div>
+        </div>
+        <div className='w-full flex justify-between items-center'>
+          <div className='px-0.5 text-xs text-white bg-green-600 rounded'>SPEED</div>
+          <div className='font-bold'>{props.championCardData.speed}</div>
+        </div>
+        <div className='w-full flex justify-between items-center'>
+          <div className='px-0.5 text-xs text-white bg-purple-600 rounded'>MAGIC</div>
+          <div className='font-bold'>{props.championCardData.magic}</div>
+        </div>
+      </div>
+      <div className='h-full w-full bg-contain bg-center bg-no-repeat ' style={{ backgroundImage: `url(${siteConfig.url}/images/card-template.png)` }} ></div>
+    </div>
+  )
+}
+
+
+
+

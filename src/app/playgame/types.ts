@@ -71,13 +71,13 @@ export interface ItemCard {
   used: boolean;
 }
 
-enum ChampionCardsEnum {
+export enum ChampionCardsEnum {
   Fighter = "fighter",
   Wizard = "wizard",
   Ranger = "ranger",
 }
 
-enum AbilityCardsEnum {
+export enum AbilityCardsEnum {
   AbilityOne = "abilityOne",
   AbilityTwo = "abilityTwo",
   AbilityThree = "abilityThree",
@@ -85,6 +85,6 @@ enum AbilityCardsEnum {
   AbilityUltimate = "abilityUltimate",
 }
 
-enum ItemCardsEnum {
+export enum ItemCardsEnum {
   BasicHealthPotion = "basicHealthPotion",
 }
